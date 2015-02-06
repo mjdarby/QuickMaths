@@ -30,7 +30,7 @@ from time import time
 ## Formula stuff.
 
 class Formula:
-    """Base class for formulae"""
+    """Base class for formulae. How are you so basic?"""
     def __init__(self):
         self.left = None
         self.right = None
@@ -71,8 +71,12 @@ class DifferenceFormula(Formula):
     """We're not so different, you and I.'"""
     def __init__(self, left, right):
         super(Formula, self).__init__()
-        self.left = left
-        self.right = right
+        if left.value() < right.value():
+            self.right = left
+            self.left = right
+        else:
+            self.left = left
+            self.right = right
 
     def value(self):
         return self.left.value() - self.right.value()
@@ -97,8 +101,11 @@ class DivisionFormula(Formula):
     """Warning: Don't divide by zero!"""
     def __init__(self, left, right):
         super(Formula, self).__init__()
-        self.left = left
-        self.right = right
+        target = left.value()
+        firstFactor = randint(2, 8)
+        secondFactor = randint(2, 8)
+        self.left = NumberFormula(target * firstFactor * secondFactor)
+        self.right = NumberFormula(firstFactor * secondFactor)
 
     def value(self):
         return self.left.value() // self.right.value()
@@ -109,6 +116,7 @@ class DivisionFormula(Formula):
 ## Quesiton stuff.
 
 class Question:
+    """42. Sorry, that's not right."""
     def __init__(self, formula):
         self.formula = formula
 
@@ -119,6 +127,7 @@ class Question:
         return self.formula.text()
 
 class QuestionParameter:
+    """Within expected parameters."""
     def __init__(self, formula, bottomValue, topValue):
         self.formula = formula
         self.bottomValue = bottomValue
@@ -128,18 +137,11 @@ class QuestionParameter:
         left = NumberFormula(randint(self.bottomValue, self.topValue))
         right = NumberFormula(randint(self.bottomValue, self.topValue))
 
-        # Division is special, as we target a specific value instead
-        if self.formula == DivisionFormula:
-            target = randint(self.bottomValue, self.topValue)
-            firstFactor = randint(2, int(sqrt(self.topValue)))
-            secondFactor = randint(2, 8)
-            left = NumberFormula(target * firstFactor * secondFactor)
-            right = NumberFormula(firstFactor * secondFactor)
-
         aFormula = self.formula(left, right)
         return aFormula
 
 class QuestionGenerator:
+    """The enemy is in our base!"""
     def __init__(self, parameters):
         self.parameters = parameters
 
@@ -164,7 +166,8 @@ def checkArguments():
     aBottomValue = int(sys.argv[2])
     aTopValue = int(sys.argv[3])
     if aBottomValue >= aTopValue:
-        print("The lower value of the range must be smaller than the higher value!")
+        print("The lower value of the range must be smaller than the higher \
+value!")
         return False
     if sys.argv[1] not in operationToFormula.keys():
         print("Pick one of 'pro', 'dif', 'sum' or 'div'")
@@ -204,12 +207,12 @@ def beginGame():
 
         except Exception as e:
             pass
-    if totalAttempts == 0:
-        pass
-    else:
-        print("Out of {} attempted answers, you got {}% right! On average, you took {} seconds to answer a question correctly.".format(totalAttempts,
-                                                                                                                                       totalCorrect*100/totalAttempts,
-                                                                                                                                       averageTime))
+    if totalAttempts != 0:
+        print("Out of {} attempted answers, you got {:.2%} right! \
+\nOn average, you took {:.2} seconds \
+to answer a question correctly.".format(totalAttempts,
+                                        totalCorrect/totalAttempts,
+                                        averageTime))
 
 
 if __name__ == "__main__":
