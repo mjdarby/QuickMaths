@@ -101,11 +101,8 @@ class DivisionFormula(Formula):
     """Warning: Don't divide by zero!"""
     def __init__(self, left, right):
         super(Formula, self).__init__()
-        target = left.value()
-        firstFactor = randint(2, 8)
-        secondFactor = randint(2, 8)
-        self.left = NumberFormula(target * firstFactor * secondFactor)
-        self.right = NumberFormula(firstFactor * secondFactor)
+        self.left = NumberFormula(left.value() * right.value())
+        self.right = NumberFormula(right.value())
 
     def value(self):
         return self.left.value() // self.right.value()
@@ -136,7 +133,6 @@ class QuestionParameter:
     def generateFormula(self):
         left = NumberFormula(randint(self.bottomValue, self.topValue))
         right = NumberFormula(randint(self.bottomValue, self.topValue))
-
         aFormula = self.formula(left, right)
         return aFormula
 
@@ -162,35 +158,68 @@ def printUsage():
     print("""Usage: {} - Print this usage information
        {} [operation] [lowRange] [highRange]""".format(progName, progName))
 
-def checkArguments():
-    aBottomValue = int(sys.argv[2])
-    aTopValue = int(sys.argv[3])
-    if aBottomValue >= aTopValue:
-        print("The lower value of the range must be smaller than the higher \
-value!")
-        return False
-    if sys.argv[1] not in operationToFormula.keys():
-        print("Pick one of 'pro', 'dif', 'sum' or 'div'")
-        return False
-    return True
+def getParameters():
+    aTotalArguments = len(sys.argv) - 1
 
-def beginGame():
+    if aTotalArguments % 3 != 0:
+        print("Enter your desired question formats in the form [operation] \
+[lowerbound] [upperbound]")
+        return False
+
+    aParameterSettings = sys.argv[1:]
+    aParameterSettings.reverse()
+    aParameters = []
+    while aParameterSettings:
+        aFormula = aParameterSettings.pop()
+        aBottomValue = int(aParameterSettings.pop())
+        aTopValue = int(aParameterSettings.pop())
+        if aBottomValue >= aTopValue:
+            print("The lower value of the range must be smaller than the higher \
+value!")
+            return False
+        if aFormula not in operationToFormula.keys():
+            print("Pick one of 'pro', 'dif', 'sum' or 'div'")
+            return False
+        aFormulaClass = operationToFormula[aFormula]
+        aParameters.append(QuestionParameter(aFormulaClass,
+                                             aBottomValue,
+                                             aTopValue))
+    return aParameters
+
+def runGame(questionParameters):
     aFormulaClass = operationToFormula[sys.argv[1]]
     aBottomValue = int(sys.argv[2])
     aTopValue = int(sys.argv[3])
-    aParameter = QuestionParameter(aFormulaClass, aBottomValue, aTopValue)
-    aGenerator = QuestionGenerator([aParameter])
+    aGenerator = QuestionGenerator(questionParameters)
     myQuestion = aGenerator.generate()
     userString = ""
+    totalQuestions = 1
     totalAttempts = 0
     totalCorrect = 0
     averageTime = 0
     timeTaken = time()
     # This run loop is not my finest hour.
     while userString != "exit":
-        print("{} > ".format(myQuestion.formula.text()), end='')
+        # Print the current question number + text
+        print("{}) {} > ".format(totalQuestions,
+                                 myQuestion.formula.text()),
+              end='')
 
-        userString = input()
+        # Grab user input
+        try:
+            userString = input()
+        except EOFError as e:
+            # In case the user things 'EOF' is the way out
+            print('')
+            break
+
+        # Allow user to skip questions
+        if userString == "skip":
+            myQuestion = aGenerator.generate()
+            totalQuestions += 1
+            timeTaken = time()
+
+        # If the user provided an integer, parse it and check it
         try:
             userAnswer = int(userString)
             if userAnswer == myQuestion.formula.value():
@@ -199,18 +228,21 @@ def beginGame():
                 timeTaken = time() - timeTaken
                 averageTime = (averageTime * totalCorrect) + timeTaken
                 totalCorrect += 1
+                totalQuestions += 1
                 averageTime /= totalCorrect
                 timeTaken = time()
             else:
                 print("Incorrect, try again!")
             totalAttempts += 1
-
         except Exception as e:
             pass
-    if totalAttempts != 0:
-        print("Out of {} attempted answers, you got {:.2%} right! \
+
+    # Alas, the game is over.
+    if totalCorrect != 0:
+        print("Out of {} attempted answers, you got {} ({:.2%}) right! \
 \nOn average, you took {:.2} seconds \
 to answer a question correctly.".format(totalAttempts,
+                                        totalCorrect,
                                         totalCorrect/totalAttempts,
                                         averageTime))
 
@@ -218,6 +250,7 @@ to answer a question correctly.".format(totalAttempts,
 if __name__ == "__main__":
     if (len(sys.argv) == 1):
         printUsage()
-    elif (len(sys.argv) == 4):
-        if checkArguments():
-            beginGame()
+    else:
+        aParameters = getParameters();
+        if aParameters:
+            runGame(aParameters)
